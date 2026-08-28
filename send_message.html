@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Send a Message 💜</title>
+<style>
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #5A2882, #8B5AA8);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+
+  .card {
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    padding: 40px 32px;
+    width: 90%;
+    max-width: 420px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    text-align: center;
+  }
+
+  .sloth-emoji {
+    font-size: 48px;
+    margin-bottom: 8px;
+  }
+
+  h1 {
+    color: white;
+    font-size: 22px;
+    margin: 0 0 4px 0;
+  }
+
+  p.subtitle {
+    color: rgba(255,255,255,0.75);
+    font-size: 14px;
+    margin: 0 0 24px 0;
+  }
+
+  textarea {
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 100px;
+    padding: 14px;
+    border-radius: 12px;
+    border: none;
+    font-size: 16px;
+    font-family: inherit;
+    resize: vertical;
+    outline: none;
+    background: rgba(255,255,255,0.9);
+    color: #3A1A5C;
+  }
+
+  textarea::placeholder {
+    color: #9B7FBF;
+  }
+
+  button {
+    margin-top: 18px;
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    border: none;
+    background: #E6D6FA;
+    color: #4A1F73;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.1s ease, background 0.2s ease;
+  }
+
+  button:hover {
+    background: #F3E8FF;
+  }
+
+  button:active {
+    transform: scale(0.98);
+  }
+
+  #status {
+    margin-top: 14px;
+    font-size: 14px;
+    color: rgba(255,255,255,0.85);
+    min-height: 20px;
+  }
+
+  .char-count {
+    text-align: right;
+    font-size: 12px;
+    color: rgba(255,255,255,0.6);
+    margin-top: 6px;
+  }
+
+  .divider {
+    margin: 28px 0;
+    border: none;
+    border-top: 1px solid rgba(255,255,255,0.2);
+  }
+
+  .readings {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+  }
+
+  .reading {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 14px;
+    padding: 16px 20px;
+    min-width: 100px;
+  }
+
+  .reading .value {
+    font-size: 28px;
+    font-weight: 700;
+    color: white;
+  }
+
+  .reading .label {
+    font-size: 12px;
+    color: rgba(255,255,255,0.7);
+    margin-top: 4px;
+  }
+
+  .readings-updated {
+    margin-top: 12px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.5);
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="sloth-emoji">🦥💜</div>
+  <h1>Send her a message</h1>
+  <p class="subtitle">It'll show up on her frame in a few seconds</p>
+
+  <textarea id="messageInput" placeholder="Type something sweet..." maxlength="120"></textarea>
+  <div class="char-count"><span id="charCount">0</span>/120</div>
+
+  <button id="sendButton" onclick="sendMessage()">Send 💜</button>
+
+  <div id="status"></div>
+
+  <hr class="divider">
+
+  <h1 style="font-size:18px;">Room conditions</h1>
+  <div class="readings">
+    <div class="reading">
+      <div class="value" id="tempValue">--°C</div>
+      <div class="label">Temperature</div>
+    </div>
+    <div class="reading">
+      <div class="value" id="humidityValue">--%</div>
+      <div class="label">Humidity</div>
+    </div>
+  </div>
+  <div class="readings-updated" id="readingsUpdated"></div>
+</div>
+
+<!-- Firebase SDKs (compat version, works with plain script tags, no build tools needed) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyCluJ5scXAAYXbKBoIu2gYj-oHEkoyyS0o",
+    authDomain: "partner-message-frame.firebaseapp.com",
+    databaseURL: "https://partner-message-frame-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "partner-message-frame",
+    storageBucket: "partner-message-frame.firebasestorage.app",
+    messagingSenderId: "815392402094",
+    appId: "1:815392402094:web:06fe11098e382f0938db3f"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  const textarea = document.getElementById('messageInput');
+  const charCount = document.getElementById('charCount');
+  const status = document.getElementById('status');
+
+  textarea.addEventListener('input', () => {
+    charCount.textContent = textarea.value.length;
+  });
+
+  function sendMessage() {
+    const message = textarea.value.trim();
+
+    if (message === "") {
+      status.textContent = "Type something first!";
+      status.style.color = "#FFD1D1";
+      return;
+    }
+
+    status.textContent = "Sending...";
+    status.style.color = "rgba(255,255,255,0.85)";
+
+    db.ref('/message').set(message)
+      .then(() => {
+        status.textContent = "Sent! 💜";
+        status.style.color = "#D1FFD1";
+        textarea.value = "";
+        charCount.textContent = "0";
+      })
+      .catch((error) => {
+        status.textContent = "Something went wrong: " + error.message;
+        status.style.color = "#FFD1D1";
+      });
+  }
+
+  // Allow Ctrl+Enter or Cmd+Enter to send
+  textarea.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      sendMessage();
+    }
+  });
+
+  // ------------------------------
+  // Live temperature and humidity
+  // ------------------------------
+  const tempValue = document.getElementById('tempValue');
+  const humidityValue = document.getElementById('humidityValue');
+  const readingsUpdated = document.getElementById('readingsUpdated');
+
+  function formatTime() {
+    const now = new Date();
+    return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  db.ref('/temperature').on('value', (snapshot) => {
+    const val = snapshot.val();
+    if (val !== null) {
+      tempValue.textContent = val.toFixed(1) + '°C';
+      readingsUpdated.textContent = 'Updated ' + formatTime();
+    }
+  });
+
+  db.ref('/humidity').on('value', (snapshot) => {
+    const val = snapshot.val();
+    if (val !== null) {
+      humidityValue.textContent = val.toFixed(0) + '%';
+    }
+  });
+</script>
+
+</body>
+</html>
